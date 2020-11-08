@@ -3,44 +3,44 @@ from discord.ext import commands, tasks
 import emoji
 import string
 
-class PollCommands(commands.Cog):
+class PollCommands(commands.Cog): #Class that contains this 'category' of commands
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command(aliases=["Poll"])
     async def poll(self, ctx, *args):
-        numoptions = len(args)-1
-        usethumbs = False
-        temp = list(args)
-        description = ""
-        reactions = []
-        question = str(args[0])
-        temp.pop(0)
-        if numoptions <= 0:
-            await ctx.send("I need options to list.")
+        numoptions = len(args)-1 #By default we're provided the command as well, so we have to knock one off
+        usethumbs = False #Whether or not we're going to only have two arguments
+        temp = list(args) #Temp storage for the arguments provided
+        description = "" #Description for the embed
+        reactions = [] #The reactions we're using
+        question = str(args[0]) #What the question specifically is
+        temp.pop(0) #Remove the question from the list of arguments provided
+        if numoptions <= 0: #We need things to list
+            await ctx.send("I need options to list.") 
             return
-        if numoptions == 1:
+        elif numoptions == 1: #Not a poll without options
             await ctx.send("We can't have a poll with one option, dummy.")
             return
-        if numoptions == 2:
+        elif numoptions == 2: #Only two options provided, +1 and -1 are best
             usethumbs = True
         if usethumbs == True:
             description = ":thumbsup: {0}\n\n\n:thumbsdown: {1}".format(str(args[1]),str(args[2]))
             reactions = [":thumbsup:",":thumbsdown:"]
         else:
-            for count,arg in enumerate(temp):
+            for count,arg in enumerate(temp): #From A-Z, I doubt we'd have use cases where we need more than 20 or so options
                 reactions.append(":regional_indicator_symbol_letter_{0}:".format(string.ascii_lowercase[count]))
                 description += ":regional_indicator_{1}: {0}\n\n".format(arg,string.ascii_lowercase[count])
         embed = discord.Embed(description=description)
-        msg = await ctx.send("**{0}**".format(question,embed=embed)
+        msg = await ctx.send("**{0}**".format(question,embed=embed)) #Send it
         for emote in reactions:
-            await msg.add_reaction(emoji.emojize(emote,use_aliases=True))
+            await msg.add_reaction(emoji.emojize(emote,use_aliases=True)) #React to the message we just sent
         return
 
 def setup(bot):
-    bot.add_cog(PollCommands(bot))
+    bot.add_cog(PollCommands(bot)) #Add the category to the bot
 
-    
+# Reference functions for how to implement a base listener and command
 """    @commands.Cog.listener()
     async def on_member_join(self, member):
         channel = member.guild.system_channel
