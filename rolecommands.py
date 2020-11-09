@@ -10,6 +10,7 @@ ServerConfigs = {} #Storage for the config settings for the various servers we'r
 
 class ServerConfig:
     RoleGroups = {}
+    OnJoinRoleID = 0
 
 class GroupConfig:
     Name = ""
@@ -39,6 +40,15 @@ class RoleCommands(commands.Cog):
         with open("ConfigDatabase.db","wb") as database:
             pickle.dump(ServerConfigs,database)
         return
+    
+    @commands.command()
+    async def ListGroups(self, ctx):
+        ServerObject = ServerConfig()
+        ServerObject = ServerConfigs[str(ctx.guild.id)] #Can probably turn this snippet into a function
+        for group in ServerObject.RoleGroups.keys():
+            print(group)
+        return
+
 
     @commands.command()
     async def SetupServer(self, ctx):
@@ -51,6 +61,7 @@ class RoleCommands(commands.Cog):
             ServerConfigs.update({str(ctx.guild.id):config})
             await ctx.invoke(self.bot.get_command('SaveServerConfigs'))
             return
+
     @commands.command()
     async def CreateGroup(self, ctx, *, GroupName: str):
         global ServerConfigs
@@ -60,22 +71,21 @@ class RoleCommands(commands.Cog):
             serverconfig = ServerConfigs[str(ctx.guild.id)]
             serverconfig.RoleGroups.update({groupconfig.Name:groupconfig})
             await ctx.send("Group successfully created!")
+            await ctx.invoke(self.bot.get_command('SaveServerConfigs'))
             return
         except:
             await ctx.send("Abbie messed up somewhere. :(")
         
     @commands.command()
-    async def AddRoles(self, ctx, *args):
+    async def AddRoles(self, ctx, groupname: str, *args):
         global ServerConfigs
-        temp = list(args) #Temp storage for the arguments provided
-        group = str(args[0]) #What the Group's name is
-        temp.pop(0) #Remove the Group from the list of roles provided
+        await ctx.send("Found group name: {0}".format(groupname))
         roleids=[]
         GroupObject = GroupConfig()
         ServerObject = ServerConfig()
         ServerObject = ServerConfigs[str(ctx.guild.id)]
-        GroupObject = ServerObject.RoleGroups[group]
-        for role in temp:
+        GroupObject = ServerObject.RoleGroups[groupname]
+        for role in args:
             roleobject = get(ctx.guild.roles, name=role)
             roleids.append(roleobject.id)
         GroupObject.Roles.append(roleids)
@@ -89,10 +99,13 @@ class RoleCommands(commands.Cog):
         GroupObject = GroupConfig()
         ServerObject = ServerConfigs[str(ctx.guild.id)]
         GroupObject = ServerObject.RoleGroups[GroupName]
-        for count,arg in enumerate(GroupObject.Roles): #From A-Z, just like the poll, I doubt we'd have use cases where we need more than 20 or so options
-                reactions.append(":regional_indicator_symbol_letter_{0}:".format(string.ascii_lowercase[count]))
-                description += ":regional_indicator_{1}: {0}\n\n".format(arg,string.ascii_lowercase[count]) #Todo: Fetch role name from ID
-                GroupObject.EmojiMap.update({":regional_indicator_symbol_letter_{0}:".format(string.ascii_lowercase[count]):arg})
+        for count,arg in enumerate(GroupObject.Roles):
+            for nestedcount,realarg, in enumerate(arg):
+                 #From A-Z, just like the poll, I doubt we'd have use cases where we need more than 20 or so options
+                reactions.append(":regional_indicator_symbol_letter_{0}:".format(string.ascii_lowercase[nestedcount]))
+                temproleobject = get(ctx.guild.roles, id=int(realarg))
+                description += ":regional_indicator_{1}: {0}\n\n".format(temproleobject.name,string.ascii_lowercase[nestedcount]) #Todo: Fetch role name from ID
+                GroupObject.EmojiMap.update({":regional_indicator_symbol_letter_{0}:".format(string.ascii_lowercase[nestedcount]):realarg})
         embed = discord.Embed(description=description)
         msg = await ctx.send(embed=embed) #Send it
         for emote in reactions:
@@ -103,8 +116,6 @@ class RoleCommands(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         global ServerConfigs
-        print(payload.user_id)
-        print(self.bot.user.id)
         if payload.user_id == self.bot.user.id:
             return
         if str(payload.guild_id) in ServerConfigs:
@@ -113,7 +124,7 @@ class RoleCommands(commands.Cog):
             GroupObject = GroupConfig()
             foundGroup = False
             for group in ServerObject.RoleGroups.keys():
-                if int(payload.message_id) == GroupObject.MessageID:
+                if int(payload.message_id) == ServerObject.RoleGroups[group].MessageID:
                     GroupObject = ServerObject.RoleGroups[group]
                     foundGroup = True
                     break
@@ -135,7 +146,7 @@ class RoleCommands(commands.Cog):
             GroupObject = GroupConfig()
             foundGroup = False
             for group in ServerObject.RoleGroups.keys():
-                if int(payload.message_id) == GroupObject.MessageID:
+                if int(payload.message_id) == ServerObject.RoleGroups[group].MessageID:
                     GroupObject = ServerObject.RoleGroups[group]
                     foundGroup = True
                     break
