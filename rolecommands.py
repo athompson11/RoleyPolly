@@ -10,7 +10,6 @@ ServerConfigs = {} #Storage for the config settings for the various servers we'r
 
 class ServerConfig:
     RoleGroups = {}
-    AdminRoleIDs = []
 
 class GroupConfig:
     Name = ""
@@ -22,6 +21,10 @@ class GroupConfig:
 class RoleCommands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    async def cog_check(self, ctx):
+        #Check if user has admin role
+        return ctx.author.guild_permissions.administrator
 
     @tasks.loop(minutes=15.0)
     async def SaveConfig(self):
@@ -88,7 +91,7 @@ class RoleCommands(commands.Cog):
         GroupObject = ServerObject.RoleGroups[GroupName]
         for count,arg in enumerate(GroupObject.Roles): #From A-Z, just like the poll, I doubt we'd have use cases where we need more than 20 or so options
                 reactions.append(":regional_indicator_symbol_letter_{0}:".format(string.ascii_lowercase[count]))
-                description += ":regional_indicator_{1}: {0}\n\n".format(arg,string.ascii_lowercase[count])
+                description += ":regional_indicator_{1}: {0}\n\n".format(arg,string.ascii_lowercase[count]) #Todo: Fetch role name from ID
                 GroupObject.EmojiMap.update({":regional_indicator_symbol_letter_{0}:".format(string.ascii_lowercase[count]):arg})
         embed = discord.Embed(description=description)
         msg = await ctx.send(embed=embed) #Send it
@@ -100,6 +103,8 @@ class RoleCommands(commands.Cog):
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload):
         global ServerConfigs
+        print(payload.user_id)
+        print(self.bot.user.id)
         if payload.user_id == self.bot.user.id:
             return
         if str(payload.guild_id) in ServerConfigs:
@@ -108,7 +113,7 @@ class RoleCommands(commands.Cog):
             GroupObject = GroupConfig()
             foundGroup = False
             for group in ServerObject.RoleGroups.keys():
-                if payload.message_id == GroupObject.MessageID:
+                if int(payload.message_id) == GroupObject.MessageID:
                     GroupObject = ServerObject.RoleGroups[group]
                     foundGroup = True
                     break
@@ -130,7 +135,7 @@ class RoleCommands(commands.Cog):
             GroupObject = GroupConfig()
             foundGroup = False
             for group in ServerObject.RoleGroups.keys():
-                if payload.message_id == GroupObject.MessageID:
+                if int(payload.message_id) == GroupObject.MessageID:
                     GroupObject = ServerObject.RoleGroups[group]
                     foundGroup = True
                     break

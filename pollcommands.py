@@ -6,7 +6,7 @@ import string
 class PollCommands(commands.Cog): #Class that contains this 'category' of commands
     def __init__(self, bot):
         self.bot = bot
-
+    
     @commands.command(aliases=["Poll"])
     async def poll(self, ctx, *args):
         numoptions = len(args)-1 #By default we're provided the command as well, so we have to knock one off
@@ -14,7 +14,7 @@ class PollCommands(commands.Cog): #Class that contains this 'category' of comman
         temp = list(args) #Temp storage for the arguments provided
         description = "" #Description for the embed
         reactions = [] #The reactions we're using
-        question = str(args[0]) #What the question specifically is
+        #question = str(args[0]) #What the question specifically is
         temp.pop(0) #Remove the question from the list of arguments provided
         if numoptions <= 0: #We need things to list
             await ctx.send("I need options to list.") 
