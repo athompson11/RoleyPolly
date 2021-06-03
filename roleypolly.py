@@ -1,7 +1,9 @@
 import discord
 from discord.ext import commands, tasks
 
-bot = commands.Bot(command_prefix="!") #The command prefix, we could technically let this be configurable
+intents = discord.Intents.default()
+intents.members = True
+bot = commands.Bot(command_prefix="!r",intents=intents) #The command prefix, we could technically let this be configurable
 with open("token.cfg") as tokenconfig: #Where we store our token for access to the API
     Token = tokenconfig.readline()
 

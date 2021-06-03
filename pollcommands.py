@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands, tasks
-import emoji
 import string
 
 class PollCommands(commands.Cog): #Class that contains this 'category' of commands
@@ -29,14 +28,14 @@ class PollCommands(commands.Cog): #Class that contains this 'category' of comman
             reactions = [":thumbsup:",":thumbsdown:"]
         else:
             for count,arg in enumerate(temp): #From A-Z, I doubt we'd have use cases where we need more than 20 or so options
-                reactions.append(":regional_indicator_symbol_letter_{0}:".format(string.ascii_lowercase[count]))
+                reactions.append(":regional_indicator_{0}:".format(string.ascii_lowercase[count]))
                 description += ":regional_indicator_{0}: {1}\n\n".format(string.ascii_lowercase[count],arg)
         embed = discord.Embed(description=description)
         print(description)
         embed = discord.Embed(description=description)
         msg = await ctx.send("**{0}**".format(str(args[0])),embed=embed)
         for emote in reactions:
-            await msg.add_reaction(emoji.emojize(emote,use_aliases=True))
+            await msg.add_reaction(emote)
         return
 
 def setup(bot):

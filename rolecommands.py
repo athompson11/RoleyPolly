@@ -9,8 +9,8 @@ import string
 ServerConfigs = {} #Storage for the config settings for the various servers we're in (TODO, store in file)
 
 class ServerConfig:
-    RoleGroups = {}
     OnJoinRoleID = 0
+    WelcomeChannel = 0
 
 class GroupConfig:
     Name = ""
@@ -35,6 +35,12 @@ class RoleCommands(commands.Cog):
         return
 
     @commands.command()
+    async def checkConfig(self,ctx):
+        global ServerConfigs
+        print(ServerConfigs[int(ctx.guild.id)].OnJoinRoleID)
+        print(ServerConfigs[int(ctx.guild.id)].WelcomeChannel)
+
+    @commands.command()
     async def SaveServerConfigs(self, ctx):
         global ServerConfigs
         with open("ConfigDatabase.db","wb") as database:
@@ -42,122 +48,42 @@ class RoleCommands(commands.Cog):
         return
     
     @commands.command()
-    async def ListGroups(self, ctx):
-        ServerObject = ServerConfig()
-        ServerObject = ServerConfigs[str(ctx.guild.id)] #Can probably turn this snippet into a function
-        for group in ServerObject.RoleGroups.keys():
-            print(group)
-        return
-
-
-    @commands.command()
-    async def SetupServer(self, ctx):
-        await ctx.send("Get started by creating a role group with by using !CreateGroup \"name\", and then add a few roles to it with !AddRole \"groupname\" \"rolenames\" and finally make a role menu with !RoleMenu \"groupname!\"")
-        global ServerConfigs
-        if str(ctx.guild.id) in ServerConfigs:
-            await ctx.send("But you already knew that, silly goose.")
-        else:
-            config = ServerConfig()
-            ServerConfigs.update({str(ctx.guild.id):config})
-            await ctx.invoke(self.bot.get_command('SaveServerConfigs'))
-            return
-
-    @commands.command()
-    async def CreateGroup(self, ctx, *, GroupName: str):
-        global ServerConfigs
+    async def SetOnJoinRole(self, ctx, myRole: discord.Role):
         try:
-            groupconfig = GroupConfig()
-            groupconfig.Name = GroupName
-            serverconfig = ServerConfigs[str(ctx.guild.id)]
-            serverconfig.RoleGroups.update({groupconfig.Name:groupconfig})
-            await ctx.send("Group successfully created!")
-            await ctx.invoke(self.bot.get_command('SaveServerConfigs'))
+            ServerConfigs[int(ctx.guild.id)].OnJoinRoleID = int(myRole.id)
+            await ctx.send("Role set to role id # {0}".format(ServerConfigs[int(ctx.guild.id)].OnJoinRoleID))
             return
         except:
-            await ctx.send("Abbie messed up somewhere. :(")
-        
+            ServerConfigs[int(ctx.guild.id)] = ServerConfig()
+            ServerConfigs[int(ctx.guild.id)].OnJoinRoleID = int(myRole.id)
+            await ctx.send("Role set to role id # {0}".format(ServerConfigs[int(ctx.guild.id)].OnJoinRoleID))
+            return
+
     @commands.command()
-    async def AddRoles(self, ctx, groupname: str, *args):
-        global ServerConfigs
-        await ctx.send("Found group name: {0}".format(groupname))
-        roleids=[]
-        GroupObject = GroupConfig()
-        ServerObject = ServerConfig()
-        ServerObject = ServerConfigs[str(ctx.guild.id)]
-        GroupObject = ServerObject.RoleGroups[groupname]
-        for role in args:
-            roleobject = get(ctx.guild.roles, name=role)
-            roleids.append(roleobject.id)
-        GroupObject.Roles.append(roleids)
-        return
-    
-    @commands.command()
-    async def CreateRoleMenu(self, ctx, *, GroupName: str):
-        description = ""
-        reactions = []
-        ServerObject = ServerConfig()
-        GroupObject = GroupConfig()
-        ServerObject = ServerConfigs[str(ctx.guild.id)]
-        GroupObject = ServerObject.RoleGroups[GroupName]
-        for count,arg in enumerate(GroupObject.Roles):
-            for nestedcount,realarg, in enumerate(arg):
-                 #From A-Z, just like the poll, I doubt we'd have use cases where we need more than 20 or so options
-                reactions.append(":regional_indicator_symbol_letter_{0}:".format(string.ascii_lowercase[nestedcount]))
-                temproleobject = get(ctx.guild.roles, id=int(realarg))
-                description += ":regional_indicator_{1}: {0}\n\n".format(temproleobject.name,string.ascii_lowercase[nestedcount]) #Todo: Fetch role name from ID
-                GroupObject.EmojiMap.update({":regional_indicator_symbol_letter_{0}:".format(string.ascii_lowercase[nestedcount]):realarg})
-        embed = discord.Embed(description=description)
-        msg = await ctx.send(embed=embed) #Send it
-        for emote in reactions:
-            await msg.add_reaction(emoji.emojize(emote,use_aliases=True)) #React to the message we just sent
-        GroupObject.MessageID = msg.id
-        return
+    async def SetWelcomeChannel(self, ctx, myChannel: discord.TextChannel):
+        try:
+            ServerConfigs[int(ctx.guild.id)].WelcomeChannel = int(myChannel.id)
+            await ctx.send("Channel set to channel id # {0}".format(ServerConfigs[int(ctx.guild.id)].WelcomeChannel))
+            return
+        except:
+            ServerConfigs[int(ctx.guild.id)] = ServerConfig()
+            ServerConfigs[int(ctx.guild.id)].WelcomeChannel = int(myChannel.id)
+            await ctx.send("Channel set to channel id # {0}".format(ServerConfigs[int(ctx.guild.id)].WelcomeChannel))
+            return
+            
 
     @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload):
-        global ServerConfigs
-        if payload.user_id == self.bot.user.id:
+    async def on_member_join(self, member):
+        channel = member.guild.get_channel(ServerConfigs[int(member.guild.id)].WelcomeChannel)
+        print(channel)
+        if channel is not None:
+            await channel.send('WELCOME NEW FRIEND!!! {0.mention}'.format(member))
+        if ServerConfigs[member.guild.id].OnJoinRoleID != 0:
+            print("Got role")
+            server = member.guild
+            role = discord.utils.get(server.roles, id=ServerConfigs[member.guild.id].OnJoinRoleID)
+            await member.add_roles(role)
             return
-        if str(payload.guild_id) in ServerConfigs:
-            ServerObject = ServerConfig()
-            ServerObject = ServerConfigs[str(payload.guild_id)]
-            GroupObject = GroupConfig()
-            foundGroup = False
-            for group in ServerObject.RoleGroups.keys():
-                if int(payload.message_id) == ServerObject.RoleGroups[group].MessageID:
-                    GroupObject = ServerObject.RoleGroups[group]
-                    foundGroup = True
-                    break
-            if foundGroup:
-                print("Found group, could have added role.")
-            else:
-                print("Can't find group.")
-            return
-
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_remove(self, payload):
-        global ServerConfigs
-        if payload.user_id == self.bot.user.id:
-            return
-        if str(payload.guild_id) in ServerConfigs:
-            ServerObject = ServerConfig()
-            ServerObject = ServerConfigs[str(payload.guild_id)]
-            GroupObject = GroupConfig()
-            foundGroup = False
-            for group in ServerObject.RoleGroups.keys():
-                if int(payload.message_id) == ServerObject.RoleGroups[group].MessageID:
-                    GroupObject = ServerObject.RoleGroups[group]
-                    foundGroup = True
-                    break
-            if foundGroup:
-                print("Found group, could have removed role.")
-            else:
-                print("Can't find group.")
-            return
-        
-
-
 def setup(bot):
     global ServerConfigs
     try:
@@ -167,22 +93,3 @@ def setup(bot):
         print("Couldn't find database!")
         pass
     bot.add_cog(RoleCommands(bot))
-
-
-    
-"""    @commands.Cog.listener()
-    async def on_member_join(self, member):
-        channel = member.guild.system_channel
-        if channel is not None:
-            await channel.send('Welcome {0.mention}.'.format(member))
-
-  @commands.command()
-    async def hello(self, ctx, *, member: discord.Member = None):
-        """"""Says hello""""""
-        member = member or ctx.author
-        if self._last_member is None or self._last_member.id != member.id:
-            await ctx.send('Hello {0.name}~'.format(member))
-        else:
-            await ctx.send('Hello {0.name}... This feels familiar.'.format(member))
-        self._last_member = member
-"""
