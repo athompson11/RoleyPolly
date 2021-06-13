@@ -1,15 +1,26 @@
 import discord
 from discord.ext import commands, tasks
+import configparser
 
 intents = discord.Intents.default()
 intents.members = True
-bot = commands.Bot(command_prefix="!r",intents=intents) #The command prefix, we could technically let this be configurable
-with open("token.cfg") as tokenconfig: #Where we store our token for access to the API
-    Token = tokenconfig.readline()
+token = None
+owner = None
 
-def is_abbie(): #A function that checks if the person running the command is me
+bot = commands.Bot(command_prefix="!r",intents=intents) #The command prefix, we could technically let this be configurable
+config = configparser.ConfigParser()
+read = config.read('config.ini') #returns a list of files successfully read
+if not read:
+    quit()
+else:
+    token = config["Token"]
+    owner = config["Owner"]
+
+
+def is_owner(): #A function that checks if the person running the command is me
     async def predicate(ctx):
-        return ctx.author.id == 210279390288805888
+        global owner
+        return ctx.author.id == owner
     return commands.check(predicate)
 
 def is_owner(): #A function that checks if the person running the command is the server owner
@@ -18,7 +29,7 @@ def is_owner(): #A function that checks if the person running the command is the
     return commands.check(predicate)
 
 @bot.command()
-@is_abbie() #Live modify the code they said, it'd be fun they said
+@is_owner() #Live modify the code they said, it'd be fun they said
 async def reload(ctx):
     bot.reload_extension('pollcommands')
     bot.reload_extension('rolecommands')
@@ -45,4 +56,4 @@ async def on_ready():
     bot.load_extension('pollcommands')
     bot.load_extension('rolecommands')
 
-bot.run(Token)
+bot.run(token)
